@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'camera_controller.dart';
 
@@ -47,60 +48,47 @@ class CameraService {
     int sensorOrientation,
   ) {
     try {
-      print(
-        'Creating InputImage: width=${cameraImg.width}, height=${cameraImg.height}, format=${cameraImg.format.group}',
-      );
-
-      final yPlane = cameraImg.planes[0].bytes;
-      final uPlane = cameraImg.planes[1].bytes;
-      final vPlane = cameraImg.planes[2].bytes;
-
-      print(
-        'Y plane length: ${yPlane.length}, U plane length: ${uPlane.length}, V plane length: ${vPlane.length}',
-      );
-
-      // Gabungkan data byte dari semua plane
-      final expectedUVLength = (cameraImg.width * cameraImg.height) ~/ 4;
-      if (uPlane.length != expectedUVLength ||
-          vPlane.length != expectedUVLength) {
-        print('Adjusting U and V plane lengths to $expectedUVLength');
-        final adjustedU = Uint8List(expectedUVLength)
-          ..setRange(0, uPlane.length, uPlane);
-        final adjustedV = Uint8List(expectedUVLength)
-          ..setRange(0, vPlane.length, vPlane);
-        final bytes = Uint8List.fromList(yPlane + adjustedU + adjustedV);
-        print('Adjusted bytes length: ${bytes.length}');
-
-        final rotation = _getRotation(sensorOrientation);
-        final metadata = InputImageMetadata(
-          size: Size(cameraImg.width.toDouble(), cameraImg.height.toDouble()),
-          rotation: rotation,
-          format: InputImageFormat.yuv420,
-          bytesPerRow: cameraImg.planes[0].bytesPerRow,
+      // Di Android, format dari plugin `camera` hampir selalu YUV_420_888.
+      // Plugin ML Kit paling andal bekerja dengan format NV21 di Android.
+      if (defaultTargetPlatform != TargetPlatform.android) {
+        // Jika Anda berencana mendukung iOS, perlu penanganan khusus di sini.
+        throw Exception(
+          'Real-time detection is only supported on Android for now.',
         );
-
-        print(
-          'InputImage metadata: size=${metadata.size}, rotation=${metadata.rotation}, format=${metadata.format}, bytesPerRow=${metadata.bytesPerRow}',
-        );
-
-        return InputImage.fromBytes(bytes: bytes, metadata: metadata);
-      } else {
-        final bytes = Uint8List.fromList(yPlane + uPlane + vPlane);
-        final rotation = _getRotation(sensorOrientation);
-         final format = _getInputImageFormat(cameraImg.format.group);
-        final metadata = InputImageMetadata(
-          size: Size(cameraImg.width.toDouble(), cameraImg.height.toDouble()),
-          rotation: rotation,
-          format: format,
-          bytesPerRow: cameraImg.planes[0].bytesPerRow,
-        );
-
-        print(
-          'InputImage metadata: size=${metadata.size}, rotation=${metadata.rotation}, format=${metadata.format}, bytesPerRow=${metadata.bytesPerRow}',
-        );
-
-        return InputImage.fromBytes(bytes: bytes, metadata: metadata);
       }
+
+      // Gabungkan semua bytes dari semua plane menjadi satu buffer.
+      // Sisi native dari plugin akan menggunakan metadata untuk mem-parsing buffer ini.
+      final WriteBuffer allBytes = WriteBuffer();
+      for (final Plane plane in cameraImg.planes) {
+        allBytes.putUint8List(plane.bytes);
+      }
+      final bytes = allBytes.done().buffer.asUint8List();
+
+      final imageSize = Size(
+        cameraImg.width.toDouble(),
+        cameraImg.height.toDouble(),
+      );
+
+      final imageRotation = _getRotation(sensorOrientation);
+
+      // **KUNCI PERBAIKAN**: Tentukan format sebagai NV21.
+      final inputImageFormat = InputImageFormat.nv21;
+
+      final bytesPerRow = cameraImg.planes[0].bytesPerRow;
+
+      final inputImageData = InputImageMetadata(
+        size: imageSize,
+        rotation: imageRotation,
+        format: inputImageFormat,
+        bytesPerRow: bytesPerRow,
+      );
+
+      print(
+        'InputImage metadata: size=${inputImageData.size}, rotation=${inputImageData.rotation}, format=${inputImageData.format}, bytesPerRow=${inputImageData.bytesPerRow}',
+      );
+
+      return InputImage.fromBytes(bytes: bytes, metadata: inputImageData);
     } catch (e) {
       throw Exception('Failed to create InputImage: $e');
     }
@@ -124,16 +112,6 @@ class CameraService {
     }
   }
 
-  static InputImageFormat _getInputImageFormat(ImageFormatGroup format) {
-    switch (format) {
-      case ImageFormatGroup.yuv420:
-        return InputImageFormat.yuv420;
-      case ImageFormatGroup.nv21:
-        return InputImageFormat.nv21;
-      case ImageFormatGroup.bgra8888:
-        return InputImageFormat.bgra8888;
-      default:
-        throw Exception('Unsupported image format: $format');
-    }
-  }
+  // Fungsi _getInputImageFormat tidak lagi diperlukan karena kita langsung menentukan NV21.
+  // static InputImageFormat? _getInputImageFormat(ImageFormatGroup format) { ... }
 }
