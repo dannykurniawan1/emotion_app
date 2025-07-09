@@ -48,10 +48,9 @@ class CameraService {
     int sensorOrientation,
   ) {
     try {
-      // Di Android, format dari plugin `camera` hampir selalu YUV_420_888.
       // Plugin ML Kit paling andal bekerja dengan format NV21 di Android.
       if (defaultTargetPlatform != TargetPlatform.android) {
-        // Jika Anda berencana mendukung iOS, perlu penanganan khusus di sini.
+        // Jika berencana mendukung iOS, perlu penanganan khusus di sini.
         throw Exception(
           'Real-time detection is only supported on Android for now.',
         );

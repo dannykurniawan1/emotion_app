@@ -179,7 +179,8 @@ class _RealTimePageState extends State<RealTimePage> {
               padding: const EdgeInsets.all(20),
               child: FloatingActionButton(
                 onPressed: _isBusy ? null : _toggleStreaming,
-                child: Icon(_isStreaming ? Icons.stop : Icons.play_arrow),
+                backgroundColor: Colors.white,
+                child: Icon(_isStreaming ? Icons.stop : Icons.play_arrow, color: Colors.black),
               ),
             ),
           ),

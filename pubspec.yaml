@@ -41,6 +41,7 @@ dependencies:
   google_mlkit_face_detection: ^0.13.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.0+1
+  font_awesome_flutter: ^10.8.0
 
 dev_dependencies:
   flutter_test:
@@ -69,6 +70,7 @@ flutter:
      - assets/mobilenet_v1_inbalance.tflite
      - assets/emotion_splash.png
      - assets/Home.png
+     - assets/Background.png
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
